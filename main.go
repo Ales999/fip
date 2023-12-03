@@ -109,12 +109,14 @@ func FipFindArpCommand() error {
 // Поиск MAC-данных
 func FipFindMacCommand() error {
 
-	cmds := []string{"sh mac address-table | e CPU"}
+	cmds := []string{"sh mac address-table dynamic"}
 	// Prepare cisco account
 	acc := cisaccs.NewCisAccount(cli.CisFileName, cli.PwdFileName)
 
 	if len(cli.Mac.FindedMac) > 0 {
 		// Бежим по указанным хостам
+		cmds = append(cmds, "sh etherchannel detail | i Group:|Port:")
+		cmds = append(cmds, "sh cdp entry * | i  Device|Interface")
 		for _, hst := range cli.Mac.CheckHosts {
 
 			cisout, err := acc.OneCisExecuteSsh(hst, cli.PortSsh, cmds)
@@ -126,6 +128,12 @@ func FipFindMacCommand() error {
 			// Если что-то нашли то перебираем
 			if macfound {
 				for _, macstr := range macstrs {
+					// Если найденный порт - это линк к другому коммутатору
+					if strings.Contains(macstr.GetIface(), "Port-channel") {
+						//debug
+						fmt.Print("External host: ")
+					}
+
 					// Печать результата поиска
 					fmt.Printf("Mac %s found, Host: %s, Port: %s, Vlan: %s\n", macstr.GetMac(), hst, macstr.GetIface(), macstr.GetVlan())
 				}
