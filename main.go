@@ -8,6 +8,7 @@ import (
 	"github.com/alecthomas/kong"
 
 	"github.com/ales999/cisaccs"
+	"github.com/ales999/fip/nxthst"
 )
 
 var cli struct {
@@ -15,13 +16,13 @@ var cli struct {
 	// Команда для поиска ARP данных
 	Arp struct {
 		CheckHosts  []string `arg:"" name:"hosts" help:"Name of cisco hosts for finded ARP"`
-		FindIpOrMac string   `name:"find" help:"Поиск по MAC или IP"`
+		FindIpOrMac string   `name:"find" help:"Поиск по MAC или IP" short:"f"`
 	} `cmd:"" help:"Get or find ARP"`
 
 	// Команда для поиска MAC данных
 	Mac struct {
 		CheckHosts []string `arg:"" name:"hosts" help:"Name of cisco hosts for finded MAC"`
-		FindedMac  string   `name:"find" help:"Поиск по MAC"`
+		FindedMac  string   `name:"find" help:"Поиск по MAC" short:"f"`
 	} `cmd:"" help:"Get or find MAC"`
 
 	// Больше информации при подключении
@@ -106,6 +107,10 @@ func FipFindArpCommand() error {
 
 }
 
+func FipFindNextHost() {
+
+}
+
 // Поиск MAC-данных
 func FipFindMacCommand() error {
 
@@ -136,6 +141,47 @@ func FipFindMacCommand() error {
 
 					// Печать результата поиска
 					fmt.Printf("Mac %s found, Host: %s, Port: %s, Vlan: %s\n", macstr.GetMac(), hst, macstr.GetIface(), macstr.GetVlan())
+
+					bnxtfns, nexthost := nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
+					if bnxtfns { // Если что-то нашли
+						//var tstd *cisaccs.CisAccount
+						//fmt.Println("Next host:", nexthost)
+
+						// Рекурсивно типа перебираем
+						for {
+							//fmt.Println("Connected to", nexthost)
+							if len(nexthost) == 0 || !bnxtfns {
+								break
+							}
+							fmt.Println("Next host:", nexthost)
+							cisout, err := acc.OneCisExecuteSsh(nexthost, cli.PortSsh, cmds)
+							if err != nil {
+								fmt.Println("Host", nexthost, ":", err.Error())
+								break
+							}
+							macfound, macstrs := cisaccs.CisFindMac(cisout, cli.Mac.FindedMac)
+							if !macfound {
+								break
+							}
+							for _, macstr := range macstrs {
+								if strings.Contains(macstr.GetIface(), "Port-channel") {
+									//debug
+									fmt.Print("External host: ")
+								}
+								fmt.Printf("Mac %s found, Host: %s, Port: %s, Vlan: %s\n", macstr.GetMac(), nexthost, macstr.GetIface(), macstr.GetVlan())
+								bnxtfns, nexthost = nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
+								if !bnxtfns {
+									break
+								}
+
+							}
+							//if !bnxtfns {
+							//	break
+							//}
+						} // End рекурсия!
+
+					}
+
 				}
 			}
 		}
