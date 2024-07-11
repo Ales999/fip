@@ -124,7 +124,7 @@ func FipFindMacCommand() error {
 		cmds = append(cmds, "sh cdp entry * | i  Device|Interface")
 		for _, hst := range cli.Mac.CheckHosts {
 
-			cisout, err := acc.OneCisExecuteSsh(hst, cli.PortSsh, cmds)
+			cisout, err := acc.OneCisExecuteSsh(strings.ToLower(hst), cli.PortSsh, cmds)
 			if err != nil {
 				fmt.Println("Host", hst, ":", err.Error())
 				continue
@@ -135,7 +135,7 @@ func FipFindMacCommand() error {
 				for _, macstr := range macstrs {
 					// Если найденный порт - это линк к другому коммутатору
 					if strings.Contains(macstr.GetIface(), "Port-channel") {
-						//debug
+						//debug - don't delete this!
 						fmt.Print("External host: ")
 					}
 
@@ -164,10 +164,12 @@ func FipFindMacCommand() error {
 								break
 							}
 							for _, macstr := range macstrs {
+
 								if strings.Contains(macstr.GetIface(), "Port-channel") {
 									//debug
 									fmt.Print("External host: ")
 								}
+
 								fmt.Printf("Mac %s found, Host: %s, Port: %s, Vlan: %s\n", macstr.GetMac(), nexthost, macstr.GetIface(), macstr.GetVlan())
 								bnxtfns, nexthost = nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
 								if !bnxtfns {

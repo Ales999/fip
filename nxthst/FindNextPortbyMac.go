@@ -111,6 +111,6 @@ func FindNextPortbyMac(txtlines []string, currhost string, fmi LocMacLineData) (
 		}
 
 	}
-	return true, hstremote
+	return true, strings.ToLower(hstremote)
 
 }
