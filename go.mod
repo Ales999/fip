@@ -1,12 +1,12 @@
 module github.com/ales999/fip
 
-go 1.22.0
+go 1.22
 
 replace github.com/ales999/cisaccs => ../cisaccs
 
 require (
 	github.com/alecthomas/kong v0.9.0
-	github.com/ales999/cisaccs v0.0.14
+	github.com/ales999/cisaccs v0.0.15
 )
 
 require (
