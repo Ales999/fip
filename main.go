@@ -25,10 +25,18 @@ var cli struct {
 		FindedMac  string   `name:"find" help:"Поиск по MAC" short:"f"`
 	} `cmd:"" help:"Get or find MAC"`
 
+	// Команда для поиска сначала ARP по IP, и по найденному ищем порт по MAC
+	Combo struct {
+		CheckHosts []string `arg:"" name:"hosts" help:"Name of cisco hosts for finded Port"`
+		FindByIp   string   `name:"ip" help:"Поиск по IP" short:"f" required:""`
+	} `cmd:"" help:"Combo find, first arp, next port"`
+
 	// Больше информации при подключении
 	DebugInfo bool `name:"debug" help:"More connect debug info" short:"d"`
 	// Номер порта для ssh
 	PortSsh int `help:"SSH порт для доступа к cisco" short:"p" default:"22"`
+	// TimeOut SSH connect
+	PortTimeout int `help:"SSH Timeout in second" short:"t" default:"10"`
 	// Путь к файлу конфигурации имя_cisco/группа/ip - env: CISFILE
 	CisFileName string `help:"Путь к файлу конфигурации имя_cisco/группа/ip" default:"/etc/cisco/cis.yaml" env:"CISFILE"`
 	// Путь к файлу конфигурации имя_группы/имя/пароль - env: CISPWDS
@@ -43,7 +51,8 @@ func main() {
 		kong.UsageOnError(),
 	)
 
-	cisaccs.CisDebug = cli.DebugInfo
+	// Если в параметрах указана отладка, передадим ее в нашу библиотеку.
+	cisaccs.SetMoreOutputConnectInfo(cli.DebugInfo)
 
 	switch ctx.Command() {
 	case "arp <hosts>":
@@ -52,6 +61,9 @@ func main() {
 	case "mac <hosts>":
 		err := FipFindMacCommand()
 		ctx.FatalIfErrorf(err)
+	case "combo <hosts>":
+		err := FipFindCombo()
+		ctx.FatalIfErrorf(err)
 	default:
 		panic(ctx.Command())
 
@@ -59,22 +71,44 @@ func main() {
 	os.Exit(0)
 }
 
+func FipFindCombo() error {
+
+	cli.Arp.CheckHosts = cli.Combo.CheckHosts
+	cli.Arp.FindIpOrMac = cli.Combo.FindByIp
+
+	err := FipFindArpCommand()
+	if err != nil {
+		return err
+	} else {
+		// Если успешно нашли MAC через IP
+		if len(cli.Mac.FindedMac) > 0 {
+			cli.Mac.CheckHosts = cli.Combo.CheckHosts
+			err := FipFindMacCommand()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // Поиск ARP-данных
 func FipFindArpCommand() error {
 
 	// Что будем выполнять на cisco
-	cmds := []string{"sh arp"}
+	cmds := []string{`sh arp`}
 
 	// Подготовка к подключению.
 	acc := cisaccs.NewCisAccount(cli.CisFileName, cli.PwdFileName)
 
 	// Если мы хотим найти конкретный IP или MAC в ARP то нужно парсить вывод
-	if len(cli.Arp.FindIpOrMac) > 0 {
+	if len(strings.TrimSpace(cli.Arp.FindIpOrMac)) > 0 {
 
 		for _, hst := range cli.Arp.CheckHosts {
 
 			// Получаем данные с каждого хоста
-			out, err := acc.OneCisExecuteSsh(hst, cli.PortSsh, cmds)
+			out, err := acc.OneCisExecuteSsh(hst, cli.PortSsh, cmds, cli.PortTimeout)
 			if err != nil {
 				fmt.Println(err.Error())
 				continue
@@ -82,8 +116,12 @@ func FipFindArpCommand() error {
 
 			found, arpsm := cisaccs.CisFindArp(out, cli.Arp.FindIpOrMac)
 			if found {
+				// Сохраним во временную переменную найденный MAC
+				foundedMac := arpsm.GetMac()
 				// Печать результата поиска
-				fmt.Printf("ARP %s found, Host: %s, Port %s, IP: %s\n", arpsm.GetMac(), hst, arpsm.GetIface(), arpsm.GetIp())
+				fmt.Printf("ARP %s found, Host: %s, Port %s, IP: %s\n", foundedMac, hst, arpsm.GetIface(), arpsm.GetIp())
+				// Запоминаем для Combo-режима
+				cli.Mac.FindedMac = foundedMac
 				// ARP ищем до первого совпадения, на оствшиеся хосты можно не ходить.
 				break
 			}
@@ -107,9 +145,11 @@ func FipFindArpCommand() error {
 
 }
 
+/*
 func FipFindNextHost() {
 
 }
+*/
 
 // Поиск MAC-данных
 func FipFindMacCommand() error {
@@ -118,10 +158,10 @@ func FipFindMacCommand() error {
 	// Prepare cisco account
 	acc := cisaccs.NewCisAccount(cli.CisFileName, cli.PwdFileName)
 
-	if len(cli.Mac.FindedMac) > 0 {
+	if len(strings.TrimSpace(cli.Mac.FindedMac)) > 0 {
 		// Бежим по указанным хостам
-		cmds = append(cmds, "sh etherchannel detail | i Group:|Port:")
-		cmds = append(cmds, "sh cdp entry * | i  Device|Interface")
+		cmds = append(cmds, `sh etherchannel detail | i Group:|Port:`)
+		cmds = append(cmds, `sh cdp entry * | i  Device|Interface`)
 		for _, hst := range cli.Mac.CheckHosts {
 
 			cisout, err := acc.OneCisExecuteSsh(strings.ToLower(hst), cli.PortSsh, cmds)
