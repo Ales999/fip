@@ -73,6 +73,7 @@ func main() {
 		panic(ctx.Command())
 
 	}
+	fmt.Println("---")
 	os.Exit(0)
 }
 
@@ -185,7 +186,7 @@ func FipFindMacCommand() error {
 					}
 
 					// Печать результата поиска
-					fmt.Printf("Mac %s found, Host: %s, Port: %s, Vlan: %s\n", macstr.GetMac(), hst, macstr.GetIface(), macstr.GetVlan())
+					fmt.Printf("Mac %s found, Host: %s Port: %s Vlan: %s\n", macstr.GetMac(), hst, macstr.GetIface(), macstr.GetVlan())
 
 					bnxtfns, nexthost := nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
 					if bnxtfns { // Если что-то нашли
@@ -215,7 +216,7 @@ func FipFindMacCommand() error {
 									fmt.Print("External host: ")
 								}
 
-								fmt.Printf("Mac %s found, Host: %s, Port: %s, Vlan: %s\n", macstr.GetMac(), nexthost, macstr.GetIface(), macstr.GetVlan())
+								fmt.Printf("Mac %s found, Host: %s Port: %s Vlan: %s\n", macstr.GetMac(), nexthost, macstr.GetIface(), macstr.GetVlan())
 								bnxtfns, nexthost = nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
 								if !bnxtfns {
 									break
