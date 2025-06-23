@@ -51,6 +51,11 @@ func main() {
 		kong.UsageOnError(),
 	)
 
+	if len(cli.Mac.FindedMac) > 0 {
+		// Если MAC указан, то его нужно очистить от лишних символов и привести к cisco формату
+		cli.Mac.FindedMac = nxthst.ConvertMACAddress(cli.Mac.FindedMac)
+	}
+
 	// Если в параметрах указана отладка, передадим ее в нашу библиотеку.
 	cisaccs.SetMoreOutputConnectInfo(cli.DebugInfo)
 
@@ -119,7 +124,7 @@ func FipFindArpCommand() error {
 				// Сохраним во временную переменную найденный MAC
 				foundedMac := arpsm.GetMac()
 				// Печать результата поиска
-				fmt.Printf("ARP %s found, Host: %s, Port %s, IP: %s\n", foundedMac, hst, arpsm.GetIface(), arpsm.GetIp())
+				fmt.Printf("ARP %s found, Host: %s Port %s IP: %s\n", foundedMac, hst, arpsm.GetIface(), arpsm.GetIp())
 				// Запоминаем для Combo-режима
 				cli.Mac.FindedMac = foundedMac
 				// ARP ищем до первого совпадения, на оствшиеся хосты можно не ходить.
