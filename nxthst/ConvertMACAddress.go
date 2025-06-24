@@ -32,8 +32,10 @@ func ConvertMACAddress(input string) string {
 	}
 
 	ret := result.String()
-
-	fmt.Println("Convert", input, "-->", ret)
+	// Если коррекция была произведена то выведем что изменили.
+	if !strings.EqualFold(input, ret) {
+		fmt.Println("Convert", input, "-->", ret)
+	}
 
 	return ret
 }

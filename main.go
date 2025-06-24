@@ -51,15 +51,13 @@ func main() {
 		kong.UsageOnError(),
 	)
 
+	// Если указан MAC, то его нужно очистить от лишних символов и привести к cisco формату
 	if len(cli.Arp.FindIpOrMac) > 0 {
-		// Если указан MAC, то нужно очистить от лишних символов и привести к cisco формату
-		// Если указан IP, то он останется как есть.
 		cli.Arp.FindIpOrMac = nxthst.ConvertMACAddress(cli.Arp.FindIpOrMac)
-	}
-
-	if len(cli.Mac.FindedMac) > 0 {
-		// Если указан MAC, то его нужно очистить от лишних символов и привести к cisco формату
+	} else if len(cli.Mac.FindedMac) > 0 {
 		cli.Mac.FindedMac = nxthst.ConvertMACAddress(cli.Mac.FindedMac)
+	} else if len(cli.Combo.FindByIp) > 0 {
+		cli.Combo.FindByIp = nxthst.ConvertMACAddress(cli.Combo.FindByIp)
 	}
 
 	// Если в параметрах указана отладка, передадим ее в нашу библиотеку.
