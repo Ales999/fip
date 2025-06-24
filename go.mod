@@ -2,11 +2,11 @@ module github.com/ales999/fip
 
 go 1.23.7
 
-replace github.com/ales999/cisaccs => ../cisaccs
+//replace github.com/ales999/cisaccs => ../cisaccs
 
 require (
 	github.com/alecthomas/kong v1.11.0
-	github.com/ales999/cisaccs v0.0.18
+	github.com/ales999/cisaccs v1.0.0
 )
 
 require (
