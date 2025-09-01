@@ -7,7 +7,7 @@ import (
 
 	"github.com/alecthomas/kong"
 
-	"github.com/ales999/cisaccs"
+	"github.com/ales999/cisaccs/v2"
 	"github.com/ales999/fip/nxthst"
 )
 
@@ -37,10 +37,10 @@ var cli struct {
 	PortSsh int `help:"SSH порт для доступа к cisco" short:"p" default:"22"`
 	// TimeOut SSH connect
 	PortTimeout int `help:"SSH Timeout in second" short:"t" default:"10"`
-	// Путь к файлу конфигурации имя_cisco/группа/ip - env: CISFILE
-	CisFileName string `help:"Путь к файлу конфигурации имя_cisco/группа/ip" default:"/etc/cisco/cis.yaml" env:"CISFILE"`
-	// Путь к файлу конфигурации имя_группы/имя/пароль - env: CISPWDS
-	PwdFileName string `help:"Путь к файлу конфигурации имя_группы/имя/пароль" default:"/etc/cisco/passw.json" env:"CISPWDS"`
+	// Путь к файлу конфигурации имя_cisco/группа/ip - env: CIS2FILE
+	CisFileName string `help:"Путь к файлу конфигурации имя_cisco/группа/ip" default:"/etc/cisco/hosts.yaml" env:"CIS2FILE"`
+	// Путь к файлу конфигурации имя_группы/имя/пароль - env: CIS2PWDS
+	PwdFileName string `help:"Путь к файлу конфигурации имя_группы/имя/пароль" default:"/etc/cisco/groups.yaml" env:"CIS2PWDS"`
 }
 
 func main() {
