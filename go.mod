@@ -1,8 +1,8 @@
 module github.com/ales999/fip
 
-go 1.23.7
+go 1.24.6
 
-replace github.com/ales999/cisaccs/v2 => ../cisaccs/v2
+//replace github.com/ales999/cisaccs/v2 => ../cisaccs/v2
 
 require (
 	github.com/alecthomas/kong v1.12.1
