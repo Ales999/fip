@@ -6,7 +6,7 @@ go 1.25.3
 
 require (
 	github.com/alecthomas/kong v1.12.1
-	github.com/ales999/cisaccs/v2 v2.0.0-20251023083031-704b4203209f
+	github.com/ales999/cisaccs/v2 v2.0.0-20251023102515-412d963d7077
 )
 
 require (
