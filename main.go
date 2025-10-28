@@ -155,16 +155,10 @@ func FipFindArpCommand() error {
 
 }
 
-/*
-func FipFindNextHost() {
-
-}
-*/
-
 // Поиск MAC-данных
 func FipFindMacCommand() error {
 
-	cmds := []string{"sh mac address-table dynamic"}
+	cmds := []string{"sh mac address-table | e CPU|Switch"}
 	// Prepare cisco account
 	acc := cisaccs.NewCisAccount(cli.CisFileName, cli.PwdFileName)
 
