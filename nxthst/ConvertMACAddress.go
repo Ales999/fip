@@ -8,17 +8,38 @@ import (
 
 // convertMACAddress проверяет и при необходимости конвертирует MAC-адрес
 func ConvertMACAddress(input string) string {
-	// Регулярное выражение для проверки формата xx:xx:xx:xx:xx:xx
-	macRegex := regexp.MustCompile(`^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$`)
-	if !macRegex.MatchString(input) {
+
+	input = strings.TrimSpace(input)
+	if len(input) == 0 {
 		return input
 	}
 
-	// Удаляем все двоеточия и приводим к нижнему регистру
-	cleaned := strings.ReplaceAll(input, ":", "")
-	cleaned = strings.ToLower(cleaned)
+	// Регулярное выражение для проверки формата xx:xx:xx:xx:xx:xx
+	macRegexHex := regexp.MustCompile(`^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$`)
+	if macRegexHex.MatchString(input) {
+		// Удаляем все двоеточия и приводим к нижнему регистру
+		cleaned := strings.ReplaceAll(input, ":", "")
+		cleaned = strings.ToLower(cleaned)
 
-	// Делим строку на части по 4 символа и объединяем точками
+		return macReformat(cleaned, input)
+	}
+
+	// Регулярное выражение для проверки формата 01xx.xxxx.xxxx.xx
+	macRegexDhcp := regexp.MustCompile(`^01([0-9a-fA-F]{2}\.)([0-9a-fA-F]{4}\.){2}([0-9a-fA-F]{2})$`)
+	if macRegexDhcp.MatchString(input) {
+		cleaned := strings.ReplaceAll(input, ".", "")
+		cleaned = strings.ToLower(cleaned)
+		cleaned = cleaned[2:]
+
+		return macReformat(cleaned, input)
+	}
+	// Если ничего не подошло, то вернем все как есть.
+	return input
+
+}
+
+// macReformat - Делим входную строку на части по 4 символа и объединяем точками
+func macReformat(cleaned string, original string) string {
 	var result strings.Builder
 	for i := 0; i < len(cleaned); i += 4 {
 		end := i + 4
@@ -33,8 +54,8 @@ func ConvertMACAddress(input string) string {
 
 	ret := result.String()
 	// Если коррекция была произведена то выведем что изменили.
-	if !strings.EqualFold(input, ret) {
-		fmt.Println("Convert", input, "-->", ret)
+	if !strings.EqualFold(original, ret) {
+		fmt.Println("Convert", original, "-->", ret)
 	}
 
 	return ret
