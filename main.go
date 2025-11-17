@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kong"
 
@@ -81,6 +82,7 @@ func main() {
 	os.Exit(0)
 }
 
+// Проверка в совмещенном режиме
 func FipFindCombo() error {
 
 	cli.Arp.CheckHosts = cli.Combo.CheckHosts
@@ -155,10 +157,22 @@ func FipFindArpCommand() error {
 
 }
 
+// Функция проверяет не были-ли мы раньше на этом уже cisco устройстве.
+func CheckHistoryHosts(oldHosts []string, fndHost string) bool {
+	for _, hHost := range oldHosts {
+		if strings.EqualFold(hHost, fndHost) {
+			return false
+		}
+	}
+	return true
+}
+
 // Поиск MAC-данных
 func FipFindMacCommand() error {
 
 	cmds := []string{"sh mac address-table | e CPU|Switch"}
+	// Сохраним где уже были, на каком хосту.
+	var historyHosts []string
 	// Prepare cisco account
 	acc := cisaccs.NewCisAccount(cli.CisFileName, cli.PwdFileName)
 
@@ -166,25 +180,31 @@ func FipFindMacCommand() error {
 		// Бежим по указанным хостам
 		cmds = append(cmds, `sh etherchannel detail | i Group:|Port:`)
 		cmds = append(cmds, `sh cdp entry * | i  Device|Interface`)
+		// Пробегаем по списку переданному как аргумент командной строки.
 		for _, hst := range cli.Mac.CheckHosts {
-
+			fmt.Println("Try connect to host", hst)
+			historyHosts = append(historyHosts, hst)
+			// Подключаемся к хосту из списка
 			cisout, err := acc.OneCisExecuteSsh(strings.ToLower(hst), cli.PortSsh, cmds)
 			if err != nil {
-				fmt.Println("Host", hst, ":", err.Error())
+				fmt.Println("Erorr connect to host", hst, ":", err.Error())
+				// Попытка подключиться к следующему хосту.
 				continue
 			}
 			macfound, macstrs := cisaccs.CisFindMac(cisout, cli.Mac.FindedMac)
-			// Если что-то нашли то перебираем
+			// Если что-то нашли то перебираем наш список и проверяем, есть ли там нужный нам порт.
 			if macfound {
+				// Перебираем
 				for _, macstr := range macstrs {
+					time.Sleep(1 * time.Millisecond)
 					// Если найденный порт - это линк к другому коммутатору
 					if strings.Contains(macstr.GetIface(), "Port-channel") {
 						//debug - don't delete this!
-						fmt.Print("External host: ")
+						fmt.Print("Possible External host: ")
 					}
 
 					// Печать результата поиска
-					fmt.Printf("Mac %s found, Host: %s Port: %s Vlan: %s\n", macstr.GetMac(), hst, macstr.GetIface(), macstr.GetVlan())
+					fmt.Printf("Current host: %s: Mac %s found, Port: %s Vlan: %s\n", hst, macstr.GetMac(), macstr.GetIface(), macstr.GetVlan())
 
 					bnxtfns, nexthost := nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
 					if bnxtfns { // Если что-то нашли
@@ -193,14 +213,22 @@ func FipFindMacCommand() error {
 
 						// Рекурсивно типа перебираем
 						for {
+							time.Sleep(1 * time.Millisecond)
 							//fmt.Println("Connected to", nexthost)
 							if len(nexthost) == 0 || !bnxtfns {
 								break
 							}
-							fmt.Println("Next host:", nexthost)
+							if !CheckHistoryHosts(historyHosts, nexthost) {
+								break
+							} else {
+								// Добавим данный хост в историю
+								historyHosts = append(historyHosts, nexthost)
+							}
+
+							fmt.Println("Connect to Next host:", nexthost)
 							cisout, err := acc.OneCisExecuteSsh(nexthost, cli.PortSsh, cmds)
 							if err != nil {
-								fmt.Println("Host", nexthost, ":", err.Error())
+								fmt.Println("Error connect to Host", nexthost, ":", err.Error())
 								break
 							}
 							macfound, macstrs := cisaccs.CisFindMac(cisout, cli.Mac.FindedMac)
@@ -214,7 +242,7 @@ func FipFindMacCommand() error {
 									fmt.Print("External host: ")
 								}
 
-								fmt.Printf("Mac %s found, Host: %s Port: %s Vlan: %s\n", macstr.GetMac(), nexthost, macstr.GetIface(), macstr.GetVlan())
+								fmt.Printf("Mac %s found, Next Host: %s Port: %s Vlan: %s\n", macstr.GetMac(), nexthost, macstr.GetIface(), macstr.GetVlan())
 								bnxtfns, nexthost = nxthst.FindNextPortbyMac(cisout, hst, *nxthst.NewLocMacLineData(macstr.GetVlan(), cli.Mac.FindedMac, macstr.GetIface()))
 								if !bnxtfns {
 									break
@@ -230,6 +258,8 @@ func FipFindMacCommand() error {
 
 				}
 			}
+			// Добавим данный хост в список историй, дабы два раза не ходить где уже были.
+			historyHosts = append(historyHosts, hst)
 		}
 	} else {
 		out, err := acc.MultiCisExecuteSsh(cli.Mac.CheckHosts, cli.PortSsh, cmds)
